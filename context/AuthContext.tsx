@@ -8,10 +8,10 @@ import {
   ReactNode,
 } from "react";
 import { supabase } from "../lib/supabaseClient";
-import { AuthError } from "@supabase/supabase-js";
+import { AuthError, Session, User } from "@supabase/supabase-js";
 
 interface AuthContextType {
-  user: any;
+  user: User | null;
   signIn: (
     email: string,
     password: string
@@ -26,34 +26,44 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setUser(data.session?.user));
+    // Get current session user
+    supabase.auth
+      .getSession()
+      .then(({ data }) => setUser(data.session?.user ?? null));
+
+    // Listen for auth state changes
     const { data: listener } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setUser(session?.user ?? null);
       }
     );
+
     return () => listener.subscription.unsubscribe();
   }, []);
 
+  // Sign in with email & password
   const signIn = async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
+
     if (data.user) {
       setUser(data.user);
     }
+
     return { error };
   };
 
+  // Sign up with email & password
   const signUp = async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signUp({ email, password });
 
-    // Check if email confirmation is required
-    const needsVerification = data.user && !data.session;
+    // Convert null to undefined to match type
+    const needsVerification = data.user && !data.session ? true : undefined;
 
     if (data.user && data.session) {
       setUser(data.user);
@@ -62,6 +72,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return { error, needsVerification };
   };
 
+  // Sign out
   const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -74,6 +85,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
+// Custom hook
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {

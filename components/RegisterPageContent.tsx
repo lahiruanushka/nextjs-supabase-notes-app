@@ -56,7 +56,11 @@ const RegisterPageContent = () => {
     passwordValidations.length &&
     passwordValidations.match;
 
-  const getErrorMessage = (error: any) => {
+  interface AuthError {
+    message?: string;
+  }
+
+  const getErrorMessage = (error: AuthError | null) => {
     if (!error) return "";
 
     const message = error.message || "";
@@ -105,8 +109,12 @@ const RegisterPageContent = () => {
           router.push("/notes");
         }, 1500);
       }
-    } catch (err: any) {
-      setError(err.message || "An unexpected error occurred");
+    } catch (err: unknown) {
+      let message = "An unexpected error occurred";
+      if (err && typeof err === "object" && "message" in err && typeof (err as any).message === "string") {
+        message = (err as any).message;
+      }
+      setError(message);
     } finally {
       setIsLoading(false);
     }

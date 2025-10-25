@@ -42,7 +42,7 @@ interface Note {
 const NotesPageContent = () => {
   const { user, signOut } = useAuth();
   const router = useRouter();
-  const [notes, setNotes] = useState<Note[]>([]);
+  const [notes, setNotes] = useState<Note[]>(() => (!user ? [] : []));
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [isCreating, setIsCreating] = useState(false);
@@ -60,7 +60,26 @@ const NotesPageContent = () => {
   };
 
   useEffect(() => {
-    if (user) fetchNotes();
+    let isMounted = true;
+
+    if (!user) {
+      return;
+    }
+
+    const loadNotes = async () => {
+      const { data } = await supabase
+        .from("notes")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+      if (isMounted) setNotes(data || []);
+    };
+
+    loadNotes();
+
+    return () => {
+      isMounted = false;
+    };
   }, [user]);
 
   const filteredNotes = notes.filter(
@@ -76,7 +95,7 @@ const NotesPageContent = () => {
       {
         title: newNote.title,
         content: newNote.content,
-        user_id: user.id,
+        user_id: user ? user.id : null,
       },
     ]);
     setNewNote({ title: "", content: "" });

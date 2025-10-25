@@ -37,7 +37,7 @@ const LoginPageContent = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const getErrorMessage = (error: any) => {
+  const getErrorMessage = (error: { message?: string } | null) => {
     if (!error) return "";
 
     const message = error.message || "";
@@ -76,8 +76,8 @@ const LoginPageContent = () => {
           router.push("/notes");
         }, 1000);
       }
-    } catch (err: any) {
-      setError(err.message || "An unexpected error occurred");
+    } catch (err: unknown) {
+      setError((err as Error).message || "An unexpected error occurred");
     } finally {
       setIsLoading(false);
     }
